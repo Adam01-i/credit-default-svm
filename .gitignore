@@ -1,0 +1,18 @@
+# Environnements virtuels
+venv/
+.venv/
+env/
+
+# Python
+__pycache__/
+*.pyc
+
+# Modèles et données lourdes (à ne pas versionner)
+models/*.pkl
+data/UCI_Credit_Card.csv
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Système
+.DS_Store
