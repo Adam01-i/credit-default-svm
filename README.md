@@ -91,7 +91,8 @@ cd credit-default-svm
 Le dataset UCI n'est pas inclus dans Git. Après le clonage, télécharger
 `UCI_Credit_Card.csv` et le placer dans `data/UCI_Credit_Card.csv` comme
 indiqué dans la section [Jeu de données](#jeu-de-données).
-Lien de telechargement : [UCI_Credit_Card.csv](https://www.kaggle.com/datasets/uciml/default-of-credit-card-clients-dataset?resource=download)
+
+Lien de telechargement du dataset : [UCI_Credit_Card.csv](https://www.kaggle.com/datasets/uciml/default-of-credit-card-clients-dataset?resource=download)
 
 ### Installer les dépendances
 
