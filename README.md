@@ -1,172 +1,149 @@
 # Credit Default SVM
 
-> Pipeline de machine learning pour estimer le risque de défaut de paiement
-> d'un client de carte de crédit le mois suivant.
+> Pipeline Python reproductible pour estimer le risque de défaut de paiement d’un client de carte de crédit le mois suivant.
 
-[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![scikit--learn](https://img.shields.io/badge/scikit--learn-SVM-F7931E?logo=scikit-learn&logoColor=white)](https://scikit-learn.org/)
-[![License](https://img.shields.io/badge/license-MIT-2ea44f.svg)](LICENSE)
+<p align="center">
+  <img src="outputs/figures/pipeline.svg" alt="Pipeline de traitement des données et de prédiction" width="860">
+</p>
 
-Ce projet met en œuvre un pipeline de classification binaire complet avec un
-SVM (*Support Vector Machine*) : préparation des données, séparation
-stratifiée, standardisation, recherche d'hyperparamètres, évaluation,
-sérialisation du modèle et prédiction sur de nouveaux clients.
+<p align="center">
+  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white" alt="Python 3.10 ou supérieur"></a>
+  <a href="https://scikit-learn.org/"><img src="https://img.shields.io/badge/scikit--learn-SVM-F7931E?logo=scikit-learn&logoColor=white" alt="scikit-learn"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-2ea44f.svg" alt="Licence MIT"></a>
+</p>
 
-## Sommaire
+## Vue d’ensemble
 
-- [Objectif](#objectif)
-- [Jeu de données](#jeu-de-données)
-- [Points techniques](#points-techniques)
-- [Installation](#installation)
-- [Entraînement](#entraînement)
-- [Prédiction](#prédiction)
-- [Résultats](#résultats)
-- [Structure](#structure)
-- [Limites](#limites)
-- [Licence](#licence)
+Ce projet met en œuvre une classification binaire avec un **SVM** (*Support Vector Machine*) pour prédire la variable `default.payment.next.month`.
 
-## Objectif
+Le pipeline couvre l’ensemble du cycle de traitement :
 
-La cible `default.payment.next.month` indique si le client a connu un défaut
-de paiement le mois suivant. Le modèle exploite notamment :
+- chargement et validation d’un fichier CSV au format UCI ;
+- séparation train/test stratifiée et reproductible ;
+- standardisation sans fuite de données ;
+- recherche d’hyperparamètres avec `GridSearchCV` ;
+- évaluation par rapport de classification et matrice de confusion ;
+- sérialisation du modèle et du scaler ;
+- prédiction sur de nouveaux clients avec contrôle des colonnes.
 
-- la limite de crédit et les informations générales du client ;
-- l'historique des statuts de paiement sur six mois ;
-- les montants des factures sur six mois ;
-- les montants des remboursements sur six mois.
+> **Important :** ce projet est un exemple pédagogique et expérimental. Il ne constitue pas un système de décision de crédit prêt pour la production.
 
-Le projet est conçu comme un exemple reproductible de classification supervisée
-sur des données tabulaires. Il ne constitue pas un système de décision de
-crédit prêt pour la production.
+## Résultats
 
-## Jeu de données
+Les résultats ci-dessous proviennent du modèle enregistré dans `outputs/metrics.json`, entraîné avec la grille rapide sur le jeu de données UCI.
 
-Le projet utilise le jeu de données **Default of Credit Card Clients**,
-disponible sur le [UCI Machine Learning Repository](https://archive.ics.uci.edu/dataset/350/default+of+credit+card+clients)
-et sur Kaggle. Il contient 30 000 clients et 24 variables explicatives,
-auxquelles s'ajoutent `ID` et la variable cible.
+| Indicateur | Classe 0 · pas de défaut | Classe 1 · défaut | Global |
+| --- | ---: | ---: | ---: |
+| Précision | 0,87 | 0,49 | 0,79 pondéré |
+| Rappel | 0,84 | 0,56 | 0,78 |
+| F1-score | 0,85 | 0,53 | 0,78 pondéré |
+| Support | 4 673 | 1 327 | 6 000 |
 
-Télécharger le fichier puis le placer exactement ici :
+**Accuracy : 0,776** · **F1 macro : 0,689** · **Meilleurs paramètres :** `C=1`, `kernel=rbf`, `gamma=scale`.
+
+### Matrice de confusion
+
+<p align="center">
+  <img src="outputs/figures/confusion-matrix.svg" alt="Matrice de confusion du modèle SVM" width="620">
+</p>
+
+|  | Prédit : 0 | Prédit : 1 |
+| --- | ---: | ---: |
+| Réel : 0 | 3 916 | 757 |
+| Réel : 1 | 585 | 742 |
+
+La classe `1` représente le défaut de paiement. Le rappel de cette classe est particulièrement important pour mesurer la capacité du modèle à détecter les clients à risque.
+
+### Comparaison des scores
+
+<p align="center">
+  <img src="outputs/figures/classification-metrics.svg" alt="Scores de classification par classe" width="760">
+</p>
+
+## Données
+
+Le projet s’appuie sur le jeu de données [Default of Credit Card Clients](https://archive.ics.uci.edu/dataset/350/default+of+credit+card+clients), publié par l’UCI Machine Learning Repository.
+
+Le fichier complet doit être placé ici :
 
 ```text
 data/UCI_Credit_Card.csv
 ```
 
-Le dépôt contient également :
+Le dépôt contient aussi :
 
-- `data/sample_credit_data.csv` : échantillon synthétique pour tester le
-   pipeline rapidement ;
-- `data/new_clients_example.csv` : exemple de fichier destiné à la prédiction.
+| Fichier | Rôle |
+| --- | --- |
+| `data/sample_credit_data.csv` | Petit jeu synthétique pour valider rapidement le pipeline |
+| `data/new_clients_example.csv` | Exemples de clients destinés à la prédiction |
+| `data/UCI_Credit_Card.csv` | Jeu de données complet, à télécharger séparément |
 
-Le fichier d'entraînement doit contenir au minimum les colonnes `ID` et
-`default.payment.next.month`. Les colonnes d'entrée sont conservées dans leur
-ordre d'entraînement pour éviter les erreurs de correspondance.
-
-## Points techniques
-
-- **Prévention de la fuite de données** : le `StandardScaler` est ajusté
-   uniquement sur `X_train`, puis appliqué à `X_test` et aux nouveaux clients.
-- **Séparation reproductible** : split train/test stratifié avec
-   `random_state=42`.
-- **Déséquilibre des classes** : `class_weight="balanced"` est utilisé pour
-   mieux prendre en compte les clients en défaut.
-- **Recherche d'hyperparamètres** : `GridSearchCV` optimise `C`, `kernel` et
-   `gamma` selon le score F1.
-- **Artefact complet** : le modèle, le scaler et les noms de variables sont
-   sauvegardés ensemble dans `models/model.pkl`.
-- **Validation des entrées** : le script de prédiction vérifie la présence des
-   variables attendues avant de produire un résultat.
+Les données d’entrée doivent contenir `ID`, la cible `default.payment.next.month` pour l’entraînement, ainsi que les 23 variables explicatives du jeu UCI. Pour la prédiction, `ID` est facultatif et la cible ne doit pas être fournie.
 
 ## Installation
-
-### Cloner le projet
-
-Cloner le dépôt GitHub puis se placer dans son répertoire :
 
 ```bash
 git clone https://github.com/Adam01-i/credit-default-svm.git
 cd credit-default-svm
-```
 
-Le dataset UCI n'est pas inclus dans Git. Après le clonage, télécharger
-`UCI_Credit_Card.csv` et le placer dans `data/UCI_Credit_Card.csv` comme
-indiqué dans la section [Jeu de données](#jeu-de-données).
-
-Lien de telechargement du dataset : [UCI_Credit_Card.csv](https://www.kaggle.com/datasets/uciml/default-of-credit-card-clients-dataset?resource=download)
-
-### Installer les dépendances
-
-Depuis la racine du dépôt :
-
-```bash
 python3 -m venv venv
 source venv/bin/activate
 python3 -m pip install --upgrade pip
 python3 -m pip install -r requirements.txt
 ```
 
-Sous Windows PowerShell, l'activation devient :
+Sous Windows PowerShell :
 
 ```powershell
 venv\Scripts\Activate.ps1
 ```
 
+Téléchargez ensuite le fichier UCI et placez-le dans `data/UCI_Credit_Card.csv`.
+
 ## Entraînement
 
 ### Vérification rapide
 
-Utiliser l'échantillon synthétique pour vérifier l'installation :
+Cette commande utilise le jeu synthétique et une grille réduite :
 
 ```bash
 python3 src/train.py --data data/sample_credit_data.csv --quick
 ```
 
-### Entraînement recommandé sur le vrai dataset
-
-La grille réduite permet d'obtenir rapidement un premier modèle :
+### Entraînement sur le jeu complet
 
 ```bash
+# Grille réduite, recommandée pour un premier entraînement
 python3 src/train.py --data data/UCI_Credit_Card.csv --quick
-```
 
-Pour entraîner un seul SVM sans recherche d'hyperparamètres :
-
-```bash
+# SVM unique, sans recherche d’hyperparamètres
 python3 src/train.py --data data/UCI_Credit_Card.csv --no-search
-```
 
-La grille complète est disponible sans option. Elle est plus coûteuse, en
-particulier avec le noyau RBF :
-
-```bash
+# Grille complète, plus coûteuse avec le noyau RBF
 python3 src/train.py --data data/UCI_Credit_Card.csv
 ```
 
-Après l'entraînement, deux fichiers sont générés ou mis à jour :
+Les artefacts sont écrits dans :
 
 ```text
-models/model.pkl       # modèle, scaler et variables attendues
-outputs/metrics.json   # rapport de classification et matrice de confusion
+models/model.pkl       # SVM, scaler et ordre des variables
+outputs/metrics.json    # métriques et matrice de confusion
 ```
 
 ## Prédiction
 
-Le fichier de nouveaux clients doit contenir les 24 variables explicatives
-utilisées à l'entraînement. La colonne `ID` est facultative pour la
-prédiction, tandis que la cible ne doit pas être fournie.
-
-Exécuter une prédiction avec le fichier d'exemple :
+Après l’entraînement, prédisez le risque de nouveaux clients avec :
 
 ```bash
 python3 src/predict.py --clients data/new_clients_example.csv
 ```
 
-Pour utiliser un modèle situé ailleurs :
+Pour charger un modèle situé ailleurs :
 
 ```bash
 python3 src/predict.py \
-   --model chemin/vers/model.pkl \
-   --clients chemin/vers/nouveaux_clients.csv
+  --model chemin/vers/model.pkl \
+  --clients chemin/vers/nouveaux_clients.csv
 ```
 
 Exemple de sortie :
@@ -176,67 +153,50 @@ Client 0 -> 1 (DÉFAUT PROBABLE)
 Client 1 -> 0 (pas de défaut prévu)
 ```
 
-La sortie est une prédiction statistique, pas une certitude ni une décision
-automatisée de crédit.
+Le script vérifie que toutes les variables attendues sont présentes et réutilise exactement le scaler ajusté lors de l’entraînement.
 
-## Résultats
+## Choix techniques
 
-Un entraînement avec `--quick` sur le dataset UCI a produit les résultats de
-test suivants :
+| Décision | Mise en œuvre |
+| --- | --- |
+| Prévention de la fuite | `StandardScaler` ajusté uniquement sur `X_train` |
+| Reproductibilité | `random_state=42` et split stratifié |
+| Déséquilibre des classes | `class_weight="balanced"` |
+| Optimisation | `GridSearchCV` avec score `f1` et validation croisée à 3 plis |
+| Compatibilité des entrées | Noms et ordre des variables sauvegardés avec le modèle |
+| Sorties interprétables | Rapport de classification et matrice de confusion JSON |
 
-| Indicateur | Classe 0 | Classe 1 |
-| --- | ---: | ---: |
-| Précision | 0,87 | 0,49 |
-| Rappel | 0,84 | 0,56 |
-| F1-score | 0,85 | 0,53 |
-
-La précision globale obtenue est de **0,78**. La classe `1` correspond au
-défaut de paiement et représente environ 22 % des observations ; le rappel de
-la classe à risque est donc plus pertinent que l'accuracy seule.
-
-Les métriques détaillées et la matrice de confusion sont disponibles dans
-[`outputs/metrics.json`](outputs/metrics.json). Elles peuvent varier si le
-dataset, les versions des dépendances ou les paramètres d'entraînement
-changent.
-
-## Structure
+## Structure du projet
 
 ```text
 credit-default-svm/
 ├── data/
-│   ├── UCI_Credit_Card.csv       # dataset réel, à fournir localement
-│   ├── sample_credit_data.csv    # échantillon synthétique
-│   └── new_clients_example.csv   # données d'exemple pour la prédiction
+│   ├── UCI_Credit_Card.csv
+│   ├── sample_credit_data.csv
+│   └── new_clients_example.csv
 ├── models/
-│   └── model.pkl                 # artefact généré après entraînement
+│   └── model.pkl
 ├── outputs/
-│   └── metrics.json              # métriques générées après entraînement
+│   ├── metrics.json
+│   └── figures/
+│       ├── classification-metrics.svg
+│       ├── confusion-matrix.svg
+│       └── pipeline.svg
 ├── src/
-│   ├── data_prep.py              # chargement, split et standardisation
-│   ├── train.py                  # entraînement et évaluation
-│   └── predict.py                # prédiction sur de nouveaux clients
+│   ├── data_prep.py
+│   ├── predict.py
+│   └── train.py
 ├── requirements.txt
-├── LICENSE
 └── README.md
 ```
 
-## Limites et bonnes pratiques
+## Limites et précautions
 
-- Les performances présentées sont mesurées sur un split train/test unique.
-   Une validation externe et une analyse de stabilité seraient nécessaires
-   avant toute utilisation réelle.
-- Les données peuvent contenir des biais historiques. Les prédictions ne
-   doivent pas être utilisées seules pour accorder ou refuser un crédit.
-- Le modèle n'expose pas de probabilité calibrée : `1` signifie que le SVM
-   classe le client dans la catégorie de risque, pas qu'il y a 100 % de chance
-   de défaut.
-- Le dataset réel n'est pas redistribué dans le dépôt ; il doit être obtenu
-   auprès de sa source officielle en respectant ses conditions d'utilisation.
-
-## Technologies
-
-Python · pandas · NumPy · scikit-learn · SVC · StandardScaler · GridSearchCV
+- Les performances sont mesurées sur un split train/test unique ; une validation externe et une analyse de stabilité seraient nécessaires avant toute utilisation réelle.
+- Les données peuvent contenir des biais historiques et ne doivent pas servir seules à accorder ou refuser un crédit.
+- Le SVM ne fournit pas ici de probabilité calibrée : `1` est une classe prédite, pas une probabilité de défaut de 100 %.
+- Le jeu de données UCI n’est pas redistribué dans ce dépôt ; consultez ses conditions d’utilisation avant tout usage.
 
 ## Licence
 
-Ce projet est distribué sous licence MIT. Voir [`LICENSE`](LICENSE).
+Ce projet est distribué sous licence MIT. Consultez [LICENSE](LICENSE).
